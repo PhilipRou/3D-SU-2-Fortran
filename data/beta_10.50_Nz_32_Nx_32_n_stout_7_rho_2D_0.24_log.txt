@@ -1,0 +1,15 @@
+Simulation parameters:
+ 
+Comment: beta scan to find parameters with good coupling to glueball correlator
+beta_3D = 10.5000
+rho_2D  =  0.2400
+rho_3D  =  0.1600
+n_ther  =     100
+n_meas  =    1000
+n_sepa  =      10
+n_over  =       4
+n_hit   =       8
+n_stout =       7
+hitsize prior therm. =  0.1000
+hitsize after therm. =  0.0820
+Overall time in seconds/minutes/hours:     333.31 /     5.56 /   0.09
