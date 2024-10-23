@@ -1,2 +1,0 @@
-s_wil    s_opt    smeared_s_wil  smeared_clover  accrate_metro  accrate_ovlax  time
-  0.12675860945819295        2.4480447173118591E-002   2.1274512400850654E-003   1.3540390878915787E-002  0.800041735      0.999999583       3.75679997E-03
