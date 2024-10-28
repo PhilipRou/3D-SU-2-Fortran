@@ -28,12 +28,12 @@ program su2_3D
    integer,parameter :: sp=kind(0.0E0)
    integer,parameter :: dp=kind(0.0D0)
    integer,parameter :: Nx=32 ,Ny=Nx, Nz=Ny
-   real(kind=sp)     :: beta_vals(1)
+   real(kind=sp)     :: beta_vals(7)
    integer(kind=sp)  :: beta_ind
    !real(kind=sp),parameter :: twopi_sp=8.0_sp*atan(1.0_sp)
    !real(kind=dp),parameter :: twopi_dp=8.0_dp*atan(1.0_dp)
 
-   beta_vals= [8.02] ! [6.00,7.50,9.00,10.50,12.00,13.50,15.00]
+   beta_vals=[6.00,7.50,9.00,10.50,12.00,13.50,15.00]
    do beta_ind=1,size(beta_vals)
       call su2_3D_main(beta_vals(beta_ind))
    end do
@@ -54,7 +54,7 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       integer(kind=dp) :: t_ini, t_fin, t_old, t_new, t_min, clock_rate
       character(len=80) :: hostname, hostdate, hosttime, hostzone, str_places, str_procbind, str_dynamic, str_kmp
       integer(kind=sp), allocatable :: smearlist(:)
-      integer(kind=sp) :: z_loop
+      integer(kind=sp) :: z_loop, write_loop
       real(kind=sp) :: rho_2D , rho_3D !, rho_4D !!! rho_2D<0.24, rho_3D<0.16, rho_4D<0.12
       real(kind=dp) :: swil_corr_thin(Nz), swil_corr_smth(Nz)
       real(kind=dp), allocatable :: swil_smeared(:), swil_cross_corr(:,:,:)
@@ -88,7 +88,7 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       rho_2D =0.24 
 
       n_ther=100
-      n_meas=10
+      n_meas=5000
       n_sepa= 10
       n_over=  4
       n_hit =  8
@@ -102,25 +102,36 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       write(n_stout_str, "(I2)") n_stout; n_stout_str = trim(adjustl(n_stout_str))
       write(rho_str, "(F5.2)") rho_2D; rho_str = trim(adjustl(rho_str))
       base_name = adjustl("beta_"//trim(beta_str)//"_Nz_"//trim(Nz_str)//"_Nx_"//trim(Nx_str)//"_n_stout_"//trim(n_stout_str)//"_rho_2D_"//trim(rho_str))
+      if (allocated(smearlist)) then
+         base_name = adjustl("beta_"//trim(beta_str)//"_Nz_"//trim(Nz_str)//"_Nx_"//trim(Nx_str)//"_smearlist_rho_2D_"//trim(rho_str))
+      endif
       timeseries_file_name    = trim(base_name)//".txt"
       log_file_name           = trim(base_name)//"_log.txt"
       corr_file_name          = trim(base_name)//"_corr.txt"
       crosscorr_file_name     = trim(base_name)//"_crosscorr.txt"
       swil_smeared_file_name  = trim(base_name)//"_swil_smeared.txt"
-      print*, log_file_name
+      
       open(10, file = log_file_name, status = "new")
       write(10, "(a)") "Simulation parameters:"
       write(10, "(a)") " "
       write(10, "(a)") "Comment: beta scan to find parameters with good coupling to glueball correlator"
-      write(10, "(a, F7.4)") "beta_3D = ", beta_3D
-      write(10, "(a, F7.4)") "rho_2D  = ", rho_2D
-      write(10, "(a, F7.4)") "rho_3D  = ", rho_3D
-      write(10, "(a, I7)")   "n_ther  = ", n_ther
-      write(10, "(a, I7)")   "n_meas  = ", n_meas
-      write(10, "(a, I7)")   "n_sepa  = ", n_sepa
-      write(10, "(a, I7)")   "n_over  = ", n_over
-      write(10, "(a, I7)")   "n_hit   = ", n_hit
-      write(10, "(a, I7)")   "n_stout = ", n_stout
+      write(10, "(a, F7.4)") "beta_3D   = ", beta_3D
+      write(10, "(a, F7.4)") "rho_2D    = ", rho_2D
+      write(10, "(a, F7.4)") "rho_3D    = ", rho_3D
+      write(10, "(a, I7)")   "n_ther    = ", n_ther
+      write(10, "(a, I7)")   "n_meas    = ", n_meas
+      write(10, "(a, I7)")   "n_sepa    = ", n_sepa
+      write(10, "(a, I7)")   "n_over    = ", n_over
+      write(10, "(a, I7)")   "n_hit     = ", n_hit
+      if (allocated(smearlist)) then
+         write(10, "(a)", advance="no") "smearlist = ["
+            do write_loop = 1,size(smearlist)
+               write(10, "(I2,a)", advance="no") smearlist(write_loop), ", "
+            end do
+         write(10, "(a)") "]"
+      else 
+         write(10, "(a, I7)")   "n_stout   = ", n_stout
+      endif
       write(10, "(a, F7.4)") "hitsize prior therm. = ", hitsize
       close(10)
       
