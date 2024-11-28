@@ -88,13 +88,13 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       rho_2D =0.24 
 
       n_ther=100
-      n_meas=5000
+      n_meas=10000
       n_sepa= 10
       n_over=  4
       n_hit =  8
       n_stout= 7
       allocate(smearlist(1:5))
-      smearlist = [0,1,2,5,7]
+      smearlist = [0,1,3,7,15]
 
       write(beta_str, "(F5.2)") beta_3D; beta_str = trim(adjustl(beta_str))
       write(Nz_str, "(I3)") Nz; Nz_str = trim(adjustl(Nz_str))
@@ -504,6 +504,83 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       tmq=su2_mult_oo(b,tmp)
       su2_mult_dood=su2_mult_oo(a_dag,tmq)
    end function su2_mult_dood
+
+
+
+
+   pure function su2_mult_oooodddd(a,b,c,d,e,f,g,h)
+      !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
+      implicit none
+      complex(kind=sp),dimension(2),intent(in) :: a,b,c,d,e,f,g,h
+      complex(kind=sp),dimension(2) :: su2_mult_oooodddd,e_dag,f_dag,g_dag,h_dag,tmp!,tmq,tmr,tms,tmt,tmu
+      e_dag=[conjg(e(1)),-e(2)] !!! note: su2_dagger(e)
+      f_dag=[conjg(f(1)),-f(2)] !!! note: su2_dagger(f)
+      g_dag=[conjg(g(1)),-g(2)] !!! note: su2_dagger(g)
+      h_dag=[conjg(h(1)),-h(2)] !!! note: su2_dagger(h)
+      tmp=su2_mult_oo(g_dag,h_dag)
+      tmp=su2_mult_oo(f_dag,tmp)
+      tmp=su2_mult_oo(e_dag,tmp)
+      tmp=su2_mult_oo(d,tmp)
+      tmp=su2_mult_oo(c,tmp)
+      tmp=su2_mult_oo(b,tmp)
+      su2_mult_oooodddd=su2_mult_oo(a,tmp)
+   end function su2_mult_oooodddd
+
+   pure function su2_mult_ooddddoo(a,b,c,d,e,f,g,h)
+      !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
+      implicit none
+      complex(kind=sp),dimension(2),intent(in) :: a,b,c,d,e,f,g,h
+      complex(kind=sp),dimension(2) :: su2_mult_ooddddoo,c_dag,d_dag,e_dag,f_dag,tmp!,tmq,tmr,tms,tmt,tmu
+      c_dag=[conjg(c(1)),-c(2)] !!! note: su2_dagger(c)
+      d_dag=[conjg(d(1)),-d(2)] !!! note: su2_dagger(d)
+      e_dag=[conjg(e(1)),-e(2)] !!! note: su2_dagger(e)
+      f_dag=[conjg(f(1)),-f(2)] !!! note: su2_dagger(f)
+      tmp=su2_mult_oo(g,h)
+      tmp=su2_mult_oo(f_dag,tmp)
+      tmp=su2_mult_oo(e_dag,tmp)
+      tmp=su2_mult_oo(d_dag,tmp)
+      tmp=su2_mult_oo(c_dag,tmp)
+      tmp=su2_mult_oo(b,tmp)
+      su2_mult_ooddddoo=su2_mult_oo(a,tmp)
+   end function su2_mult_ooddddoo
+
+   pure function su2_mult_ddddoooo(a,b,c,d,e,f,g,h)
+      !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
+      implicit none
+      complex(kind=sp),dimension(2),intent(in) :: a,b,c,d,e,f,g,h
+      complex(kind=sp),dimension(2) :: su2_mult_ddddoooo,a_dag,b_dag,c_dag,d_dag,tmp!,tmq,tmr,tms,tmt,tmu
+      a_dag=[conjg(a(1)),-a(2)] !!! note: su2_dagger(a)
+      b_dag=[conjg(b(1)),-b(2)] !!! note: su2_dagger(b)
+      c_dag=[conjg(c(1)),-c(2)] !!! note: su2_dagger(c)
+      d_dag=[conjg(d(1)),-d(2)] !!! note: su2_dagger(d)
+      tmp=su2_mult_oo(g,h)
+      tmp=su2_mult_oo(f,tmp)
+      tmp=su2_mult_oo(e,tmp)
+      tmp=su2_mult_oo(d_dag,tmp)
+      tmp=su2_mult_oo(c_dag,tmp)
+      tmp=su2_mult_oo(b_dag,tmp)
+      su2_mult_ddddoooo=su2_mult_oo(a_dag,tmp)
+   end function su2_mult_ddddoooo
+
+   pure function su2_mult_ddoooodd(a,b,c,d,e,f,g,h)
+      !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
+      implicit none
+      complex(kind=sp),dimension(2),intent(in) :: a,b,c,d,e,f,g,h
+      complex(kind=sp),dimension(2) :: su2_mult_ddoooodd,a_dag,b_dag,g_dag,h_dag,tmp!,tmq,tmr,tms,tmt,tmu
+      a_dag=[conjg(a(1)),-a(2)] !!! note: su2_dagger(a)
+      b_dag=[conjg(b(1)),-b(2)] !!! note: su2_dagger(b)
+      g_dag=[conjg(g(1)),-g(2)] !!! note: su2_dagger(g)
+      h_dag=[conjg(h(1)),-h(2)] !!! note: su2_dagger(h)
+      tmp=su2_mult_oo(g_dag,h_dag)
+      tmp=su2_mult_oo(f,tmp)
+      tmp=su2_mult_oo(e,tmp)
+      tmp=su2_mult_oo(d,tmp)
+      tmp=su2_mult_oo(c,tmp)
+      tmp=su2_mult_oo(b_dag,tmp)
+      su2_mult_ddoooodd=su2_mult_oo(a_dag,tmp)
+   end function su2_mult_ddoooodd
+
+
 
    pure function su2_random(hitsize,r)
       implicit none
@@ -1039,6 +1116,90 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !    var=var+delta*obj !!! note: (x-avg_old)*(x-avg_new)=delta*obj
    !    !!! note: var must be divided by n_meas-1 in the end
    ! end subroutine online_avgvar_dp
+
+   function calc_vectorvaluedglueballinterpolator(U,rho_2D)
+      implicit none
+      complex(kind=sp),dimension(2,3,Nx,Ny,Nz),intent(in) :: U
+      real(kind=sp),intent(in) :: rho_2D
+      complex(kind=sp),dimension(:,:,:,:,:),allocatable :: V,V_tmp
+      complex(kind=sp) :: tmp(2),tmq(2),tmr(2,2),tms(2),tmt(2),tmu(2,2)
+      real(kind=sp),dimension(16,Nz) :: calc_vectorvaluedglueballinterpolator
+      real(kind=dp) :: swil_dp,sopt_dp,swil_2_dp,sopt_2_dp
+      integer :: n,x,y,z,x_m,y_m,x_p,y_p,x_mm,y_mm,x_pp,y_pp
+      allocate(V(2,3,Nx,Ny,Nz),V_tmp(2,3,Nx,Ny,Nz))
+      do n=1,4
+         select case(n)
+          case(1); call su2_3D_confcopy(U,V_tmp)    ; call su2_2D_stout(V_tmp,V,rho_2D) !!! note: now V is  1-fold stouted
+          case(2); call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D) !!! note: now V is  3-fold stouted
+          case(3); call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D)
+                   call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D) !!! note: now V is  7-fold stouted
+          case(4); call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D)
+                   call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D)
+                   call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D)
+                   call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D) !!! note: now V is 15-fold stouted
+         end select
+         !$OMP PARALLEL DO DEFAULT(none) PRIVATE(x_min,x_plu,y_min,y_plu,swil_dp,sopt_dp,tmp,tmq,tmr) FIRSTPRIVATE(n) SHARED(V,calc_vectorvaluedglueballinterpolator) SCHEDULE(static)
+         do z=1,Nz
+            swil_dp  =0.0_dp
+            sopt_dp  =0.0_dp
+            swil_2_dp=0.0_dp
+            sopt_2_dp=0.0_dp
+            do y=1,Ny; y_m=modulo(y-2,Ny)+1; y_p=modulo(y,Ny)+1; y_mm=modulo(y-3,Ny)+1; y_pp=modulo(y+1,Ny)+1
+            do x=1,Nx; x_m=modulo(x-2,Nx)+1; x_p=modulo(x,Nx)+1; x_mm=modulo(x-3,Nx)+1; x_pp=modulo(x+1,Nx)+1
+               tmp=su2_mult_oodd(V(:,1,x,y,z),V(:,2,x_p,y,z),V(:,1,x,y_p,z),V(:,2,x,y,z))
+               swil_dp=swil_dp+su2_realtrace([cmplx(1.0),cmplx(0.0)]-tmp)/2.0
+               tmq=su2_mult_oodd(V(:,1,x,y,z),V(:,2,x_p,y,z),V(:,1,x,y_p,z),V(:,2,x,y,z)) &
+                  +su2_mult_oddo(V(:,2,x,y,z),V(:,1,x_m,y_p,z),V(:,2,x_m,y,z),V(:,1,x_m,y,z)) &
+                  +su2_mult_ddoo(V(:,1,x_m,y,z),V(:,2,x_m,y_m,z),V(:,1,x_m,y_m,z),V(:,2,x,y_m,z)) &
+                  +su2_mult_dood(V(:,2,x,y_m,z),V(:,1,x,y_m,z),V(:,2,x_p,y_m,z),V(:,1,x,y,z))
+               tmr=su2_full(tmq)/cmplx(0.0,4.0,kind=sp);
+               tmr=0.5*(tmr+conjg(transpose(tmr)));                 !!! note: make hermitean
+               tmr(1,1)=0.5*(tmr(1,1)-tmr(2,2)); tmr(2,2)=-tmr(1,1) !!! note: make traceless
+               sopt_dp=sopt_dp+0.5*realpart(sum(tmr(1,:)*tmr(:,1))+sum(tmr(2,:)*tmr(:,2)))/float(2)
+
+               tms=su2_mult_oooodddd(V(:,1,x,y,z),V(:,1,x_p,y,z),V(:,2,x_pp,y,z),V(:,2,x_pp,y_p,z),V(:,1,x_p,y_pp,z),V(:,1,x,y_pp,z),V(:,2,x,y_p,z),V(:,2,x,y,z))
+               swil_2_dp=swil_2_dp+su2_realtrace([cmplx(1.0),cmplx(0.0)]-tms/16)/2.0
+               tmt=su2_mult_oooodddd(V(:,1,x,y,z),V(:,1,x_p,y,z),V(:,2,x_pp,y,z),V(:,2,x_pp,y_p,z),V(:,1,x_p,y_pp,z),V(:,1,x,y_pp,z),V(:,2,x,y_p,z),V(:,2,x,y,z)) &
+                  +su2_mult_ooddddoo(V(:,2,x,y,z),V(:,2,x,y_p,z),V(:,1,x_m,y_pp,z),V(:,1,x_mm,y_pp,z),V(:,2,x_mm,y_p,z),V(:,2,x_mm,y,z),V(:,1,x_mm,y,z),V(:,1,x_m,y,z)) &
+                  +su2_mult_ddddoooo(V(:,1,x_m,y,z),V(:,1,x_mm,y,z),V(:,2,x_mm,y_m,z),V(:,2,x_mm,y_mm,z),V(:,1,x_mm,y_mm,z),V(:,1,x_m,y_mm,z),V(:,2,x,y_mm,z),V(:,2,x,y_m,z)) &
+                  +su2_mult_ddoooodd(V(:,2,x,y_m,z),V(:,2,x,y_mm,z),V(:,1,x,y_mm,z),V(:,1,x_p,y_mm,z),V(:,2,x_pp,y_mm,z),V(:,2,x_pp,y_m,z),V(:,1,x_p,y,z),V(:,1,x,y,z))
+               tmu=su2_full(tmt)/cmplx(0.0,16.0,kind=sp);
+               tmu=0.5*(tmr+conjg(transpose(tmr)));                 !!! note: make hermitean
+               tmu(1,1)=0.5*(tmu(1,1)-tmu(2,2)); tmu(2,2)=-tmu(1,1) !!! note: make traceless
+               sopt_2_dp=sopt_2_dp+0.5*realpart(sum(tmu(1,:)*tmu(:,1))+sum(tmu(2,:)*tmu(:,2)))/float(2)
+            end do ! x=1:Nx
+            end do ! y=1:Ny
+            calc_vectorvaluedglueballinterpolator(n+0, z)=real(swil_dp,kind=sp)/float(Nx*Ny)
+            calc_vectorvaluedglueballinterpolator(n+4, z)=real(sopt_dp,kind=sp)/float(Nx*Ny)
+            calc_vectorvaluedglueballinterpolator(n+8, z)=real(swil_2_dp,kind=sp)/float(Nx*Ny)
+            calc_vectorvaluedglueballinterpolator(n+12,z)=real(sopt_2_dp,kind=sp)/float(Nx*Ny)
+         end do ! z=1:Nz
+         !$OMP END PARALLEL DO
+      end do ! n=1:4
+      deallocate(V,V_tmp)
+   end function calc_vectorvaluedglueballinterpolator
+
+   function calc_multivaluedslicetocorr(slice)
+      implicit none
+      real(kind=sp),dimension(16,Nz),intent(in) :: slice
+      real(kind=sp),dimension(16,16,Nz) :: calc_multivaluedslicetocorr
+      real(kind=dp),dimension(16,16,Nz) :: acc_dp
+      integer :: s,t,delta,i,j
+      acc_dp(:,:,:)=0.0_dp
+      do t=1,Nz
+      do s=1,Nz
+         delta=modulo(t-s-1,Nz)+1 !!! note: delta is in range [1:Nz] where Nz stands for 0
+         do j=1,16
+         do i=1,16
+            acc_dp(i,j,delta)=acc_dp(i,j,delta)+real(slice(i,s)*slice(j,t),kind=dp)
+         end do ! j=1:16
+         end do ! i=1:16
+      end do ! s=1:Nz
+      end do ! t=1:Nz
+      do delta=1,Nz
+         calc_multivaluedslicetocorr(:,:,delta)=real(acc_dp(:,:,delta)+transpose(acc_dp(:,:,delta)),kind=sp)/float(2*Nz) !!! note: for each delta it got Nz contributions
+      end do ! delta=1:Nz
+   end function calc_multivaluedslicetocorr
 
 #ifdef never
    pure function myavg_sp(x)
