@@ -367,11 +367,13 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    end function su2_dagger
 
    pure function su2_normsqu(a)
-      !!! note: a must be 2x1 column vector, and res is also (2x1)
+      !!! note: a must be 2x1 column vector, and res is real scalar
       implicit none
       complex(kind=sp),dimension(2),intent(in) :: a
       real(kind=sp) :: su2_normsqu
-      su2_normsqu=sum(realpart(a)**2+aimag(a)**2)
+     !su2_normsqu=realpart(a*conjg(a))
+     !su2_normsqu=sum(realpart(a(:))**2)+sum(aimag(a(:))**2)
+      su2_normsqu=realpart(a(1))**2+aimag(a(1))**2+realpart(a(2))**2+aimag(a(2))**2 !!! note: fastest
    end function su2_normsqu
 
    pure function su2_project(a)
@@ -404,19 +406,25 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
       implicit none
       complex(kind=sp),dimension(2),intent(in) :: a,b
-      complex(kind=sp),dimension(2) :: su2_mult_do,a_dag
-      a_dag=[conjg(a(1)),-a(2)]
-      su2_mult_do=[a_dag(1)*b(1)-conjg(a_dag(2))*b(2),a_dag(2)*b(1)+conjg(a_dag(1))*b(2)]
+      complex(kind=sp),dimension(2) :: su2_mult_do!,a_dag
+      su2_mult_do=[conjg(a(1))*b(1)+conjg(a(2))*b(2),-a(2)*b(1)+a(1)*b(2)]
    end function su2_mult_do
 
    pure function su2_mult_od(a,b)
       !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
       implicit none
       complex(kind=sp),dimension(2),intent(in) :: a,b
-      complex(kind=sp),dimension(2) :: su2_mult_od,b_dag
-      b_dag=[conjg(b(1)),-b(2)]
-      su2_mult_od=[a(1)*b_dag(1)-conjg(a(2))*b_dag(2),a(2)*b_dag(1)+conjg(a(1))*b_dag(2)]
+      complex(kind=sp),dimension(2) :: su2_mult_od!,b_dag
+      su2_mult_od=[a(1)*conjg(b(1))+conjg(a(2))*b(2),a(2)*conjg(b(1))-conjg(a(1))*b(2)]
    end function su2_mult_od
+
+   pure function su2_mult_dd(a,b)
+      !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
+      implicit none
+      complex(kind=sp),dimension(2),intent(in) :: a,b
+      complex(kind=sp),dimension(2) :: su2_mult_dd
+      su2_mult_dd=[conjg(a(1))*conjg(b(1))-conjg(a(2))*b(2),-a(2)*conjg(b(1))-a(1)*b(2)]
+   end function su2_mult_dd
 
    pure function su2_mult_ooo(a,b,c)
       !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
@@ -431,19 +439,17 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
       implicit none
       complex(kind=sp),dimension(2),intent(in) :: a,b,c
-      complex(kind=sp),dimension(2) :: su2_mult_doo,a_dag,tmp
-      a_dag=[conjg(a(1)),-a(2)] !!! note: su2_dagger(a)
+      complex(kind=sp),dimension(2) :: su2_mult_doo,tmp
       tmp=su2_mult_oo(b,c)
-      su2_mult_doo=su2_mult_oo(a_dag,tmp)
+      su2_mult_doo=su2_mult_do(a,tmp)
    end function su2_mult_doo
 
    pure function su2_mult_odo(a,b,c)
       !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
       implicit none
       complex(kind=sp),dimension(2),intent(in) :: a,b,c
-      complex(kind=sp),dimension(2) :: su2_mult_odo,b_dag,tmp
-      b_dag=[conjg(b(1)),-b(2)] !!! note: su2_dagger(b)
-      tmp=su2_mult_oo(b_dag,c)
+      complex(kind=sp),dimension(2) :: su2_mult_odo,tmp
+      tmp=su2_mult_do(b,c)
       su2_mult_odo=su2_mult_oo(a,tmp)
    end function su2_mult_odo
 
@@ -451,9 +457,8 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
       implicit none
       complex(kind=sp),dimension(2),intent(in) :: a,b,c
-      complex(kind=sp),dimension(2) :: su2_mult_ood,c_dag,tmp
-      c_dag=[conjg(c(1)),-c(2)] !!! note: su2_dagger(c)
-      tmp=su2_mult_oo(b,c_dag)
+      complex(kind=sp),dimension(2) :: su2_mult_ood,tmp
+      tmp=su2_mult_od(b,c)
       su2_mult_ood=su2_mult_oo(a,tmp)
    end function su2_mult_ood
 
@@ -461,10 +466,8 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
       implicit none
       complex(kind=sp),dimension(2),intent(in) :: a,b,c,d
-      complex(kind=sp),dimension(2) :: su2_mult_oodd,c_dag,d_dag,tmp,tmq
-      c_dag=[conjg(c(1)),-c(2)] !!! note: su2_dagger(c)
-      d_dag=[conjg(d(1)),-d(2)] !!! note: su2_dagger(d)
-      tmp=su2_mult_oo(c_dag,d_dag)
+      complex(kind=sp),dimension(2) :: su2_mult_oodd,tmp,tmq
+      tmp=su2_mult_dd(c,d)
       tmq=su2_mult_oo(b,tmp)
       su2_mult_oodd=su2_mult_oo(a,tmq)
    end function su2_mult_oodd
@@ -473,11 +476,9 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
       implicit none
       complex(kind=sp),dimension(2),intent(in) :: a,b,c,d
-      complex(kind=sp),dimension(2) :: su2_mult_oddo,b_dag,c_dag,tmp,tmq
-      b_dag=[conjg(b(1)),-b(2)] !!! note: su2_dagger(b)
-      c_dag=[conjg(c(1)),-c(2)] !!! note: su2_dagger(c)
-      tmp=su2_mult_oo(c_dag,d)
-      tmq=su2_mult_oo(b_dag,tmp)
+      complex(kind=sp),dimension(2) :: su2_mult_oddo,tmp,tmq
+      tmp=su2_mult_do(c,d)
+      tmq=su2_mult_do(b,tmp)
       su2_mult_oddo=su2_mult_oo(a,tmq)
    end function su2_mult_oddo
 
@@ -485,28 +486,21 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
       implicit none
       complex(kind=sp),dimension(2),intent(in) :: a,b,c,d
-      complex(kind=sp),dimension(2) :: su2_mult_ddoo,a_dag,b_dag,tmp,tmq
-      a_dag=[conjg(a(1)),-a(2)] !!! note: su2_dagger(a)
-      b_dag=[conjg(b(1)),-b(2)] !!! note: su2_dagger(b)
+      complex(kind=sp),dimension(2) :: su2_mult_ddoo,tmp,tmq
       tmp=su2_mult_oo(c,d)
-      tmq=su2_mult_oo(b_dag,tmp)
-      su2_mult_ddoo=su2_mult_oo(a_dag,tmq)
+      tmq=su2_mult_do(b,tmp)
+      su2_mult_ddoo=su2_mult_do(a,tmq)
    end function su2_mult_ddoo
 
    pure function su2_mult_dood(a,b,c,d)
       !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
       implicit none
       complex(kind=sp),dimension(2),intent(in) :: a,b,c,d
-      complex(kind=sp),dimension(2) :: su2_mult_dood,a_dag,d_dag,tmp,tmq
-      a_dag=[conjg(a(1)),-a(2)] !!! note: su2_dagger(a)
-      d_dag=[conjg(d(1)),-d(2)] !!! note: su2_dagger(d)
-      tmp=su2_mult_oo(c,d_dag)
+      complex(kind=sp),dimension(2) :: su2_mult_dood,tmp,tmq
+      tmp=su2_mult_od(c,d)
       tmq=su2_mult_oo(b,tmp)
-      su2_mult_dood=su2_mult_oo(a_dag,tmq)
+      su2_mult_dood=su2_mult_do(a,tmq)
    end function su2_mult_dood
-
-
-
 
    pure function su2_mult_oooodddd(a,b,c,d,e,f,g,h)
       !!! note: a,b,c must be 2x1 column vector, and res is also (2x1)
@@ -580,8 +574,6 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       su2_mult_ddoooodd=su2_mult_oo(a_dag,tmp)
    end function su2_mult_ddoooodd
 
-
-
    pure function su2_random(hitsize,r)
       implicit none
       real(kind=sp),intent(in) :: hitsize,r(3)
@@ -598,9 +590,14 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !!! note: a must be 2x1 column vector, and res is also (2x1)
       implicit none
       complex(kind=sp),dimension(2),intent(in) :: a
-      complex(kind=sp),dimension(2) :: su2_inverse
+      complex(kind=sp),dimension(2) :: su2_inverse,tmp
+      integer :: loop
       !!! note: works also if argument A is MULTIPLE of SU(2) matrix
       su2_inverse=[conjg(a(1)),-a(2)]/su2_normsqu(a)
+      do loop=1,3 !!! note: append Newton iterations
+         tmp=[cmplx(2.0),cmplx(0.0)]-su2_mult_oo(a,su2_inverse)
+         su2_inverse=su2_mult_oo(su2_inverse,tmp)
+      end do
    end function su2_inverse
 
    pure function su2_expm(a)
@@ -638,44 +635,23 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       x_min=modulo(x-2,Nx)+1; x_plu=modulo(x,Nx)+1;
       y_min=modulo(y-2,Ny)+1; y_plu=modulo(y,Ny)+1;
       z_min=modulo(z-2,Nz)+1; z_plu=modulo(z,Nz)+1;
-#define oldway
-#ifdef oldway
       select case(dir)
-         case(1)
+       case(1)
          su2_3D_staple=su2_mult_ood(U(:,2,x,y    ,z),U(:,1,x,y_plu,z),U(:,2,x_plu,y    ,z)) &
-                        +su2_mult_doo(U(:,2,x,y_min,z),U(:,1,x,y_min,z),U(:,2,x_plu,y_min,z)) &
-                        +su2_mult_ood(U(:,3,x,y,z    ),U(:,1,x,y,z_plu),U(:,3,x_plu,y,z    )) &
-                        +su2_mult_doo(U(:,3,x,y,z_min),U(:,1,x,y,z_min),U(:,3,x_plu,y,z_min))
-         case(2)
+                      +su2_mult_doo(U(:,2,x,y_min,z),U(:,1,x,y_min,z),U(:,2,x_plu,y_min,z)) &
+                      +su2_mult_ood(U(:,3,x,y,z    ),U(:,1,x,y,z_plu),U(:,3,x_plu,y,z    )) &
+                      +su2_mult_doo(U(:,3,x,y,z_min),U(:,1,x,y,z_min),U(:,3,x_plu,y,z_min))
+       case(2)
          su2_3D_staple=su2_mult_ood(U(:,3,x,y,z    ),U(:,2,x,y,z_plu),U(:,3,x,y_plu,z    )) &
-                        +su2_mult_doo(U(:,3,x,y,z_min),U(:,2,x,y,z_min),U(:,3,x,y_plu,z_min)) &
-                        +su2_mult_ood(U(:,1,x    ,y,z),U(:,2,x_plu,y,z),U(:,1,x    ,y_plu,z)) &
-                        +su2_mult_doo(U(:,1,x_min,y,z),U(:,2,x_min,y,z),U(:,1,x_min,y_plu,z))
-         case(3)
+                      +su2_mult_doo(U(:,3,x,y,z_min),U(:,2,x,y,z_min),U(:,3,x,y_plu,z_min)) &
+                      +su2_mult_ood(U(:,1,x    ,y,z),U(:,2,x_plu,y,z),U(:,1,x    ,y_plu,z)) &
+                      +su2_mult_doo(U(:,1,x_min,y,z),U(:,2,x_min,y,z),U(:,1,x_min,y_plu,z))
+       case(3)
          su2_3D_staple=su2_mult_ood(U(:,1,x    ,y,z),U(:,3,x_plu,y,z),U(:,1,x    ,y,z_plu)) &
-                        +su2_mult_doo(U(:,1,x_min,y,z),U(:,3,x_min,y,z),U(:,1,x_min,y,z_plu)) &
-                        +su2_mult_ood(U(:,2,x,y    ,z),U(:,3,x,y_plu,z),U(:,2,x,y    ,z_plu)) &
-                        +su2_mult_doo(U(:,2,x,y_min,z),U(:,3,x,y_min,z),U(:,2,x,y_min,z_plu))
+                      +su2_mult_doo(U(:,1,x_min,y,z),U(:,3,x_min,y,z),U(:,1,x_min,y,z_plu)) &
+                      +su2_mult_ood(U(:,2,x,y    ,z),U(:,3,x,y_plu,z),U(:,2,x,y    ,z_plu)) &
+                      +su2_mult_doo(U(:,2,x,y_min,z),U(:,3,x,y_min,z),U(:,2,x,y_min,z_plu))
       end select
-#else
-      select case(dir)
-         case(1)
-         su2_3D_staple=su2_project(su2_mult_ood(U(:,2,x,y    ,z),U(:,1,x,y_plu,z),U(:,2,x_plu,y    ,z))) &
-                        +su2_project(su2_mult_doo(U(:,2,x,y_min,z),U(:,1,x,y_min,z),U(:,2,x_plu,y_min,z))) &
-                        +su2_project(su2_mult_ood(U(:,3,x,y,z    ),U(:,1,x,y,z_plu),U(:,3,x_plu,y,z    ))) &
-                        +su2_project(su2_mult_doo(U(:,3,x,y,z_min),U(:,1,x,y,z_min),U(:,3,x_plu,y,z_min)))
-         case(2)
-         su2_3D_staple=su2_project(su2_mult_ood(U(:,3,x,y,z    ),U(:,2,x,y,z_plu),U(:,3,x,y_plu,z    ))) &
-                        +su2_project(su2_mult_doo(U(:,3,x,y,z_min),U(:,2,x,y,z_min),U(:,3,x,y_plu,z_min))) &
-                        +su2_project(su2_mult_ood(U(:,1,x    ,y,z),U(:,2,x_plu,y,z),U(:,1,x    ,y_plu,z))) &
-                        +su2_project(su2_mult_doo(U(:,1,x_min,y,z),U(:,2,x_min,y,z),U(:,1,x_min,y_plu,z)))
-         case(3)
-         su2_3D_staple=su2_project(su2_mult_ood(U(:,1,x    ,y,z),U(:,3,x_plu,y,z),U(:,1,x    ,y,z_plu))) &
-                        +su2_project(su2_mult_doo(U(:,1,x_min,y,z),U(:,3,x_min,y,z),U(:,1,x_min,y,z_plu))) &
-                        +su2_project(su2_mult_ood(U(:,2,x,y    ,z),U(:,3,x,y_plu,z),U(:,2,x,y    ,z_plu))) &
-                        +su2_project(su2_mult_doo(U(:,2,x,y_min,z),U(:,3,x,y_min,z),U(:,2,x,y_min,z_plu)))
-      end select
-#endif
       !!! note: staple is not in SU(2) but [specifically for SU(2)] a multiple of an SU(2) element, and
       !!! this is why the one-column representation can still be used, except that it is not normalized
    end function su2_3D_staple
@@ -688,25 +664,14 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       integer :: x_min,x_plu,y_min,y_plu
       x_min=modulo(x-2,Nx)+1; x_plu=modulo(x,Nx)+1;
       y_min=modulo(y-2,Ny)+1; y_plu=modulo(y,Ny)+1;
-#ifdef oldway
       select case(dir)
-         case(1)
+       case(1)
          su2_2D_staple=su2_mult_ood(U(:,2,x,y    ,z),U(:,1,x,y_plu,z),U(:,2,x_plu,y    ,z)) &
-                        +su2_mult_doo(U(:,2,x,y_min,z),U(:,1,x,y_min,z),U(:,2,x_plu,y_min,z))
-         case(2)
+                      +su2_mult_doo(U(:,2,x,y_min,z),U(:,1,x,y_min,z),U(:,2,x_plu,y_min,z))
+       case(2)
          su2_2D_staple=su2_mult_ood(U(:,1,x    ,y,z),U(:,2,x_plu,y,z),U(:,1,x    ,y_plu,z)) &
-                        +su2_mult_doo(U(:,1,x_min,y,z),U(:,2,x_min,y,z),U(:,1,x_min,y_plu,z))
+                      +su2_mult_doo(U(:,1,x_min,y,z),U(:,2,x_min,y,z),U(:,1,x_min,y_plu,z))
       end select
-#else
-      select case(dir)
-         case(1)
-         su2_2D_staple=su2_project(su2_mult_ood(U(:,2,x,y    ,z),U(:,1,x,y_plu,z),U(:,2,x_plu,y    ,z))) &
-                        +su2_project(su2_mult_doo(U(:,2,x,y_min,z),U(:,1,x,y_min,z),U(:,2,x_plu,y_min,z)))
-         case(2)
-         su2_2D_staple=su2_project(su2_mult_ood(U(:,1,x    ,y,z),U(:,2,x_plu,y,z),U(:,1,x    ,y_plu,z))) &
-                        +su2_project(su2_mult_doo(U(:,1,x_min,y,z),U(:,2,x_min,y,z),U(:,1,x_min,y_plu,z)))
-      end select
-#endif
       !!! note: staple is not in SU(2) but [specifically for SU(2)] a multiple of an SU(2) element, and
       !!! this is why the one-column representation can still be used, except that it is not normalized
    end function su2_2D_staple
@@ -754,8 +719,8 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       do y=1,Ny
       do x=1,Nx
       do dir=1,3
-         tmp=su2_3D_staple(V_tmp,dir,x,y,z)
-         tmp=su2_mult_od(tmp,V_tmp(:,dir,x,y,z))
+         tmp=su2_3D_staple(V_tmp,dir,x,y,z)      !!! note: multiple of SU(2)
+         tmp=su2_mult_od(tmp,V_tmp(:,dir,x,y,z)) !!! note: multiple of SU(2)
          tmp=0.5*(tmp-su2_dagger(tmp))           !!! note: make anti-herm
          tmp(1)=cmplx(0.0,aimag(tmp(1)),kind=sp) !!! note: make traceless
          tmp=su2_expm(rho_3D*tmp)
@@ -780,16 +745,15 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       do z=1,Nz
       do y=1,Ny
       do x=1,Nx
-         do dir=1,2
-            tmp=su2_2D_staple(V_tmp,dir,x,y,z)
-            tmp=su2_mult_od(tmp,V_tmp(:,dir,x,y,z))
-            tmp=0.5*(tmp-su2_dagger(tmp))           !!! note: make anti-herm
-            tmp(1)=cmplx(0.0,aimag(tmp(1)),kind=sp) !!! note: make traceless
-            tmp=su2_expm(rho_2D*tmp)
-            tmp=su2_mult_oo(tmp,V_tmp(:,dir,x,y,z))
-            V(:,dir,x,y,z)=tmp
-         end do ! dir=1:2
-         ! V(:,3,x,y,z) = V_tmp(:,3,x,y,z)  !!! no smearing in dir=3
+      do dir=1,2
+         tmp=su2_2D_staple(V_tmp,dir,x,y,z)      !!! note: multiple of SU(2)
+         tmp=su2_mult_od(tmp,V_tmp(:,dir,x,y,z)) !!! note: multiple of SU(2)
+         tmp=0.5*(tmp-su2_dagger(tmp))           !!! note: make anti-herm
+         tmp(1)=cmplx(0.0,aimag(tmp(1)),kind=sp) !!! note: make traceless
+         tmp=su2_expm(rho_2D*tmp)
+         tmp=su2_mult_oo(tmp,V_tmp(:,dir,x,y,z))
+         V(:,dir,x,y,z)=tmp
+      end do ! dir=1:2
       end do ! x=1:Nx
       end do ! y=1:Ny
       end do ! z=1:Nz
@@ -869,23 +833,25 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       real(kind=sp),intent( in) :: beta_3D
       real(kind=sp),intent(out) :: accrate
       complex(kind=sp),dimension(2) :: oldlink,newlink,staple,staple_proj
-      real(kind=sp) :: r_sp,boltz
-      integer :: x,y,z,dir,trip,count_ovlax
+      real(kind=sp) :: boltz,r_sp(Nx/2)
+      integer :: x,y,z,dir,trip,count_ovlax,i
       count_ovlax=0
       do dir=1,3
       do trip=1,2
-         !$OMP PARALLEL DO COLLAPSE(2) DEFAULT(none) PRIVATE(oldlink,newlink,staple,staple_proj,boltz,r_sp) FIRSTPRIVATE(beta_3D,dir,trip) SHARED(U) REDUCTION(+:count_ovlax) SCHEDULE(static)
+         !$OMP PARALLEL DO COLLAPSE(2) DEFAULT(none) PRIVATE(oldlink,newlink,staple,staple_proj,boltz,r_sp,i) FIRSTPRIVATE(beta_3D,dir,trip) SHARED(U) REDUCTION(+:count_ovlax) ! SCHEDULE(static)
          do z=1,Nz
-         do y=1,Ny
-         do x=1+modulo(y+z+trip,2),Nx,2
+         do y=1,Ny; call random_number(r_sp); i=0
+         do x=1+modulo(y+z+trip,2),Nx,2; i=i+1
             staple=su2_3D_staple(U,dir,x,y,z) !!! note: is (2x1) and not in SU(2)
             staple_proj=su2_project(staple)
             oldlink=U(:,dir,x,y,z)
             newlink=su2_mult_odo(staple_proj,oldlink,staple_proj)
             newlink=su2_project(newlink)
-            boltz=exp(beta_3D*su2_realtrace(su2_mult_od(newlink-oldlink,staple))/2.0)
-            call random_number(r_sp)
-            if (r_sp<boltz) then
+            select case(2)
+             case(1); boltz=exp(beta_3D*su2_realtrace(su2_mult_od(newlink-oldlink,staple))/2.0)
+             case(2); boltz=exp(beta_3D*realpart((newlink(1)-oldlink(1))*conjg(staple(1))+conjg(newlink(2)-oldlink(2))*staple(2)))
+            end select
+            if (r_sp(i)<boltz) then !!! note: i=(x+1)/2
                U(:,dir,x,y,z)=newlink
                count_ovlax=count_ovlax+1
             end if
