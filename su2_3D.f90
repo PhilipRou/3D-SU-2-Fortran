@@ -27,44 +27,58 @@ program su2_3D
    implicit none
    integer,parameter :: sp=kind(0.0E0)
    integer,parameter :: dp=kind(0.0D0)
+   !                    L_vals   =[16,  20,  24,  32,  40,   48,   64]
+   !                    beta_vals=[4.00,5.00,6.00,8.00,10.00,12.00,16.00]
    integer,parameter :: Nx=32 ,Ny=Nx, Nz=Ny
-   real(kind=sp)     :: beta_vals(7)
-   integer(kind=sp)  :: beta_ind
+   real,parameter    :: beta=8.00
+   ! real(kind=sp)     :: beta_vals(1)
+   ! integer(kind=sp)  :: beta_ind
    !real(kind=sp),parameter :: twopi_sp=8.0_sp*atan(1.0_sp)
    !real(kind=dp),parameter :: twopi_dp=8.0_dp*atan(1.0_dp)
 
-   beta_vals=[6.00,7.50,9.00,10.50,12.00,13.50,15.00]
-   do beta_ind=1,size(beta_vals)
-      call su2_3D_main(beta_vals(beta_ind))
-   end do
+   call su2_3D_main(beta,1000)
+
+   ! beta_vals=[4.00,5.00,6.00,8.00,10.00,12.00,16.00]
+   ! do beta_ind=1,size(beta_vals)
+   !    call su2_3D_main(beta_vals(beta_ind),1000)
+   ! end do
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-   subroutine su2_3D_main(beta_3D)
+   subroutine su2_3D_main(beta_3D,n_meas_at_L_32)
 
       implicit none
+      integer(kind=sp), intent(in) :: n_meas_at_L_32
       complex(kind=sp),dimension(2,3,Nx,Ny,Nz) :: U,V
       real(kind=sp), intent(in) :: beta_3D
       real(kind=sp) :: hitsize, tmp_metro, tmp_ovlax, accrate_metro, accrate_ovlax
       real(kind=dp) :: swil_thin, swil_smth, sopt_thin, sopt_smth
       real(kind=sp) :: t_sec
+      real(kind=sp),dimension(:),allocatable :: history_swil_thin, history_swil_smth, history_sopt_thin, history_sopt_smth, history_accrate_metro, history_accrate_ovlax, history_t_sec
+      real(kind=sp),dimension(:,:),allocatable :: interpol, hist
+      real(kind=sp),dimension(:,:,:,:),allocatable :: corr
       integer(kind=sp) :: n_ther, n_meas, n_sepa, n_over, n_hit, n_stout, loop_ther, loop_meas, loop_sepa, loop_over, n_procs, n_threads
       integer(kind=dp) :: t_ini, t_fin, t_old, t_new, t_min, clock_rate
       character(len=80) :: hostname, hostdate, hosttime, hostzone, str_places, str_procbind, str_dynamic, str_kmp
       integer(kind=sp), allocatable :: smearlist(:)
       integer(kind=sp) :: z_loop, write_loop
       real(kind=sp) :: rho_2D , rho_3D !, rho_4D !!! rho_2D<0.24, rho_3D<0.16, rho_4D<0.12
-      real(kind=dp) :: swil_corr_thin(Nz), swil_corr_smth(Nz)
-      real(kind=dp), allocatable :: swil_smeared(:), swil_cross_corr(:,:,:)
+      ! real(kind=dp) :: swil_corr_thin(Nz), swil_corr_smth(Nz)
+      ! real(kind=dp), allocatable :: swil_smeared(:), swil_cross_corr(:,:,:)
       character(len=80) :: beta_str, Nz_str, Nx_str, n_stout_str, rho_str !, sim_count
-      character(len=512) :: base_name, log_file_name, timeseries_file_name, corr_file_name, swil_smeared_file_name, crosscorr_file_name
+      character(len=512) :: base_name, log_file_name, timeseries_file_name, timeseries_2Dsmear_file_name, corr_file_name, swil_smeared_file_name, crosscorr_file_name
 #ifdef _OPENMP
       logical,parameter :: do_openmp=.true.
 #else
       logical,parameter :: do_openmp=.false.
 #endif
+
+      !!! At L=32 we want n_meas = n_meas_at_L_32, and at general L we want n_meas*L^3 = n_meas_at_L_32*32^3, because
+      !!! we want to keep n_meas*(number of x-y-plaquettes) = const. and (number of x-y-plaquettes) = L^3.
+      !!! This is because a large config has many plaquettes and produces a sharper signal than a small one if n_meas is kept constant.
+      n_meas = n_meas_at_L_32*32**3/Nz**3 
 
       ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! call su2_3D_init(U)
@@ -88,11 +102,11 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       rho_2D =0.24 
 
       n_ther=100
-      n_meas=10000
+      ! n_meas=100
       n_sepa= 10
       n_over=  4
       n_hit =  8
-      n_stout= 7
+      n_stout= 3
       allocate(smearlist(1:5))
       smearlist = [0,1,3,7,15]
 
@@ -105,11 +119,12 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       if (allocated(smearlist)) then
          base_name = adjustl("beta_"//trim(beta_str)//"_Nz_"//trim(Nz_str)//"_Nx_"//trim(Nx_str)//"_smearlist_rho_2D_"//trim(rho_str))
       endif
-      timeseries_file_name    = trim(base_name)//".txt"
-      log_file_name           = trim(base_name)//"_log.txt"
-      corr_file_name          = trim(base_name)//"_corr.txt"
-      crosscorr_file_name     = trim(base_name)//"_crosscorr.txt"
-      swil_smeared_file_name  = trim(base_name)//"_swil_smeared.txt"
+      timeseries_file_name         = trim(base_name)//"_hist_3D.txt"
+      timeseries_2Dsmear_file_name = trim(base_name)//"_hist_2D.txt"
+      log_file_name                = trim(base_name)//"_log.txt"
+      corr_file_name               = trim(base_name)//"_corr.txt"
+      crosscorr_file_name          = trim(base_name)//"_crosscorr.txt"
+      swil_smeared_file_name       = trim(base_name)//"_swil_smeared.txt"
       
       open(10, file = log_file_name, status = "new")
       write(10, "(a)") "Simulation parameters:"
@@ -134,21 +149,18 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       endif
       write(10, "(a, F7.4)") "hitsize prior therm. = ", hitsize
       close(10)
-      
+
+      !!! I know I don't have to increment the identifier from 10->11 etc., it's just for readability
       open(11, file = timeseries_file_name, status = "new")
-      write(11, "(a)") "s_wil    s_opt    smeared_s_wil  smeared_clover  accrate_metro  accrate_ovlax  time"
+      write(11, "(a)") "s_wil    s_opt    s_wil_smeared_3D  s_opt_smeared_3D  accrate_metro  accrate_ovlax  time"
       close(11)
-
-      ! open(12, file = corr_file_name, status = "new")
-      ! write(12, "(a, I7, a)") "Nz = ", Nz, ";   swil_corr_thin"
-      ! close(12)
-
-      open(12, file = swil_smeared_file_name, status = "new")
-      write(12, "(a, I7, a)") "Nz = ", Nz, ";   swil_smeared"
+      
+      open(12, file = timeseries_2Dsmear_file_name, status = "new")
+      write(12, "(a)") "2D smearing: s_wil...   s_opt...    s_wil_2x2...   s_opt_2x2..."
       close(12)
 
       open(13, file = crosscorr_file_name, status = "new")
-      write(13, "(a, I7, a)") "Nz = ", Nz, ";   swil_cross_corr"
+      write(13, "(a, I7, a)") "Nz = ", Nz, ";   cross_corr"
       close(13)
 
       write(*,'(3(a,i0),2(a,f9.6))') ' su2_3D: Nx=',Nx,' Ny=',Ny,' Nz=',Nz,' beta_3D=',beta_3D,' hitsize=',hitsize
@@ -203,7 +215,7 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          hitsize=hitsize*sqrt(sqrt(accrate_metro/0.8))
          t_sec=real(dble(t_min)/dble(clock_rate),kind=sp)
          if (modulo(loop_ther,10)==0) then
-            write(*,'(i8,a,2f7.4,a,f8.6,a,f8.6)') loop_ther-n_ther,' accrates=',accrate_metro,accrate_ovlax,' time=',t_sec,' hitsize= ',hitsize
+            write(*,'(i8,a,i6,a,2f7.4,a,f8.6,a,f8.6)') loop_ther-n_ther,'/',n_meas,' accrates=',accrate_metro,accrate_ovlax,' time=',t_sec,' hitsize= ',hitsize
          end if
       end do ! loop_ther=1:n_ther
 
@@ -211,8 +223,8 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       write(10, "(a, F7.4)") "hitsize after therm. = ", hitsize
       close(10)
 
-      allocate(swil_smeared(1:size(smearlist)))
-      allocate(swil_cross_corr(1:size(smearlist),1:size(smearlist),1:Nz))
+      allocate(history_swil_thin(n_meas),history_swil_smth(n_meas),history_sopt_thin(n_meas),history_sopt_smth(n_meas),history_accrate_metro(n_meas),history_accrate_ovlax(n_meas),history_t_sec(n_meas))
+      allocate(interpol(16,Nz),hist(n_meas,16),corr(n_meas,16,16,Nz))
 
       do loop_meas=1,n_meas
          accrate_metro=0.0; accrate_ovlax=0.0
@@ -226,35 +238,24 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             call system_clock(t_new,clock_rate); t_min=min(t_new-t_old,t_min)
          end do ! loop_sepa=1:n_sepa
          call su2_3D_backproject(U)
-         ! call su2_2D_multistout(U,V,rho_2D,n_stout) !!! note: rho_2D<0.24, rho_3D<0.16, rho_4D<0.12
-         call calc_swil_corr_mat_2D(U,smearlist,rho_2D,swil_smeared,swil_cross_corr)
-         ! call calc_swil_corr_2D(U, swil_thin, swil_corr_thin)
-         ! call calc_swil_corr_2D(V, swil_smth, swil_corr_smth)
-         ! swil_thin=calc_swil(U)
-         ! swil_smth=calc_swil(V)
-         sopt_thin=calc_sopt(U)
-         ! sopt_smth=calc_sopt(V)
-         t_sec=real(dble(t_min)/dble(clock_rate),kind=sp)
-         !!! order in timeseries_file: "s_wil    clover   smeared_s_wil  smeared_clover  accrate_metro  accrate_ovlax  time"
-         open(10, file = timeseries_file_name, status = "old", position = "append")
-         write(10,*) swil_smeared(1), sopt_thin, swil_smeared(size(smearlist)), sopt_smth, accrate_metro, accrate_ovlax, t_sec
-         close(10) 
-         ! open(11, file = corr_file_name, status = "old", position = "append")
-         ! write(11,*) swil_corr_thin, swil_corr_smth
-         ! close(11) 
-         open(11, file = swil_smeared_file_name, status = "old", position = "append")
-         write(11,*) swil_smeared
-         close(11) 
-         open(12, file = crosscorr_file_name, status = "old", position = "append")
-         do z_loop = 1,Nz
-            write(12,*) swil_cross_corr(:,:,z_loop)
-         end do
-         write(12,"(a)") " "
-         close(12)
+         call su2_3D_multistout(U,V,rho_3D,n_stout) !!! note: rho_2D<0.24, rho_3D<0.16, rho_4D<0.12
+         swil_thin=calc_swil(U); history_swil_thin(loop_meas)=swil_thin
+         sopt_thin=calc_sopt(U); history_sopt_thin(loop_meas)=sopt_thin
+         swil_smth=calc_swil(V); history_swil_smth(loop_meas)=swil_smth
+         sopt_smth=calc_sopt(V); history_sopt_smth(loop_meas)=sopt_smth
+         t_sec=real(dble(t_min)/dble(clock_rate),kind=sp); history_t_sec(loop_meas) = t_sec
+         history_accrate_metro(loop_meas) = accrate_metro
+         history_accrate_ovlax(loop_meas) = accrate_ovlax
+
+         interpol=calc_vectorvaluedglueballinterpolator(U,rho_2D) !!! note: yields size(interpol)=[16,Nz]
+         corr(loop_meas,:,:,:)=calc_multivaluedslicetocorr(interpol); hist(loop_meas,:)=sum(interpol,dim=2)/float(Nz)
+         
          if (modulo(loop_meas,10)==0) then
-            write(*,'(i8,a,2f7.4,a,f8.6,a,2f9.6,a,2f9.6)') loop_meas,' accrates=',accrate_metro,accrate_ovlax,' time=',t_sec,' swil=',swil_thin,swil_smth,' sopt=',sopt_thin,sopt_smth
+            write(*,'(i8,a,i6,a,2f7.4,a,f8.6,a,2f9.6,a,2f9.6)') loop_meas,'/',n_meas,'accrates=',accrate_metro,accrate_ovlax,' time=',t_sec,' swil=',swil_thin,swil_smth,' sopt=',sopt_thin,sopt_smth
          end if
       end do ! loop_meas=1:n_meas
+
+
 
       write(*,'(3(a,i0),2(a,f9.6))') ' su2_3D: Nx=',Nx,' Ny=',Ny,' Nz=',Nz,' beta_3D=',beta_3D,' hitsize=',hitsize
       write(*,'(6(a,i0),1(a,l1)  )') ' su2_3D: n_ther=',n_ther,' n_meas=',n_meas,' n_sepa=',n_sepa,' n_over=',n_over,' n_hit=',n_hit,' n_stout=',n_stout,' do_openmp=',do_openmp
@@ -265,8 +266,31 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       t_sec=real(dble(t_fin-t_ini)/dble(clock_rate),kind=sp)
       write(*,'(a,f10.2,f8.2,f6.2)') ' overall time in seconds/minutes/hours:',t_sec,t_sec/60.0,t_sec/3600.0
       write(*,*)
-      open(10, file = log_file_name, status = "old", position = "append")
-      write(10, "(a,f10.2,a,f8.2,a,f6.2)") "Overall time in seconds/minutes/hours: ",t_sec," / ",t_sec/60.0," / ",t_sec/3600.0
+
+         !!! order in timeseries_file: "s_wil    clover   smeared_s_wil  smeared_clover  accrate_metro  accrate_ovlax  time"
+      open(10, file = timeseries_file_name, status = "old", position = "append")
+      do loop_meas=1,n_meas
+         write(10,*) history_swil_thin(loop_meas), history_sopt_thin(loop_meas), history_swil_smth(loop_meas), history_sopt_smth(loop_meas), history_accrate_metro(loop_meas), history_accrate_ovlax(loop_meas), history_t_sec(loop_meas)
+      end do
+      close(10) 
+      
+      open(11, file = timeseries_2Dsmear_file_name, status = "old", position = "append")
+      do loop_meas=1,n_meas
+         write(11,*) hist(loop_meas,:)
+      end do
+      close(11) 
+
+      open(12, file = crosscorr_file_name, status = "old", position = "append")
+      do loop_meas = 1,n_meas
+         do z_loop = 1,Nz
+            write(12,*) corr(loop_meas,:,:,z_loop)
+         end do
+         write(12,"(a)") " "
+      end do
+      close(12)
+      
+      open(13, file = log_file_name, status = "old", position = "append")
+      write(13, "(a,f10.2,a,f8.2,a,f6.2)") "Overall time in seconds/minutes/hours: ",t_sec," / ",t_sec/60.0," / ",t_sec/3600.0
 
    end subroutine su2_3D_main
 
@@ -713,7 +737,7 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       real(kind=sp),intent(in) :: rho_3D
       complex(kind=sp),dimension(2) :: tmp
       integer :: dir,x,y,z
-      if (rho_3D>1.0/6.0) then; write(*,*) 'su2_3D_stout: rho_3D<1/6 is violated'; stop; end if
+      if (rho_3D>0.1666) then; write(*,*) 'su2_3D_stout: rho_3D<1/6 is violated, rho_3D = ', rho_3D; stop; end if
       !$OMP PARALLEL DO COLLAPSE(2) DEFAULT(none) PRIVATE(tmp) FIRSTPRIVATE(rho_3D) SHARED(V_tmp,V) SCHEDULE(static)
       do z=1,Nz
       do y=1,Ny
@@ -1104,7 +1128,7 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                    call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D)
                    call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D) !!! note: now V is 15-fold stouted
          end select
-         !$OMP PARALLEL DO DEFAULT(none) PRIVATE(x_min,x_plu,y_min,y_plu,swil_dp,sopt_dp,tmp,tmq,tmr) FIRSTPRIVATE(n) SHARED(V,calc_vectorvaluedglueballinterpolator) SCHEDULE(static)
+         !$OMP PARALLEL DO DEFAULT(none) PRIVATE(x_m,x_p,x_mm,x_pp,y_m,y_p,y_mm,y_pp,swil_dp,sopt_dp,swil_2_dp,sopt_2_dp,tmp,tmq,tmr,tms,tmt,tmu) FIRSTPRIVATE(n) SHARED(V,calc_vectorvaluedglueballinterpolator) SCHEDULE(static)
          do z=1,Nz
             swil_dp  =0.0_dp
             sopt_dp  =0.0_dp
@@ -1130,7 +1154,7 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                   +su2_mult_ddddoooo(V(:,1,x_m,y,z),V(:,1,x_mm,y,z),V(:,2,x_mm,y_m,z),V(:,2,x_mm,y_mm,z),V(:,1,x_mm,y_mm,z),V(:,1,x_m,y_mm,z),V(:,2,x,y_mm,z),V(:,2,x,y_m,z)) &
                   +su2_mult_ddoooodd(V(:,2,x,y_m,z),V(:,2,x,y_mm,z),V(:,1,x,y_mm,z),V(:,1,x_p,y_mm,z),V(:,2,x_pp,y_mm,z),V(:,2,x_pp,y_m,z),V(:,1,x_p,y,z),V(:,1,x,y,z))
                tmu=su2_full(tmt)/cmplx(0.0,16.0,kind=sp);
-               tmu=0.5*(tmr+conjg(transpose(tmr)));                 !!! note: make hermitean
+               tmu=0.5*(tmu+conjg(transpose(tmu)));                 !!! note: make hermitean
                tmu(1,1)=0.5*(tmu(1,1)-tmu(2,2)); tmu(2,2)=-tmu(1,1) !!! note: make traceless
                sopt_2_dp=sopt_2_dp+0.5*realpart(sum(tmu(1,:)*tmu(:,1))+sum(tmu(2,:)*tmu(:,2)))/float(2)
             end do ! x=1:Nx
