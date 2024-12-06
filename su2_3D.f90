@@ -29,14 +29,14 @@ program su2_3D
    integer,parameter :: dp=kind(0.0D0)
    !                    L_vals   =[16,  20,  24,  32,  40,   48,   64]
    !                    beta_vals=[4.00,5.00,6.00,8.00,10.00,12.00,16.00]
-   integer,parameter :: Nx=32 ,Ny=Nx, Nz=Ny
-   real,parameter    :: beta=8.00
+   integer,parameter :: Nx=64 ,Ny=Nx, Nz=Ny
+   real,parameter    :: beta=16.00
    ! real(kind=sp)     :: beta_vals(1)
    ! integer(kind=sp)  :: beta_ind
    !real(kind=sp),parameter :: twopi_sp=8.0_sp*atan(1.0_sp)
    !real(kind=dp),parameter :: twopi_dp=8.0_dp*atan(1.0_dp)
 
-   call su2_3D_main(beta,1000)
+   call su2_3D_main(beta,10000)
 
    ! beta_vals=[4.00,5.00,6.00,8.00,10.00,12.00,16.00]
    ! do beta_ind=1,size(beta_vals)
@@ -102,7 +102,7 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       rho_2D =0.24 
 
       n_ther=100
-      ! n_meas=100
+      ! n_meas=100 !!! n_meas is now set above s.t. n_meas * L**3 = const. 
       n_sepa= 10
       n_over=  4
       n_hit =  8
@@ -129,7 +129,7 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       open(10, file = log_file_name, status = "new")
       write(10, "(a)") "Simulation parameters:"
       write(10, "(a)") " "
-      write(10, "(a)") "Comment: beta scan to find parameters with good coupling to glueball correlator"
+      write(10, "(a)") "Comment: beta scan with large statistics 16x16"
       write(10, "(a, F7.4)") "beta_3D   = ", beta_3D
       write(10, "(a, F7.4)") "rho_2D    = ", rho_2D
       write(10, "(a, F7.4)") "rho_3D    = ", rho_3D
@@ -215,7 +215,7 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          hitsize=hitsize*sqrt(sqrt(accrate_metro/0.8))
          t_sec=real(dble(t_min)/dble(clock_rate),kind=sp)
          if (modulo(loop_ther,10)==0) then
-            write(*,'(i8,a,i6,a,2f7.4,a,f8.6,a,f8.6)') loop_ther-n_ther,'/',n_meas,' accrates=',accrate_metro,accrate_ovlax,' time=',t_sec,' hitsize= ',hitsize
+            write(*,'(i8,a,i6,a,2f7.4,a,f8.6,a,f8.6)') loop_ther-n_ther,' /',n_meas,' accrates=',accrate_metro,accrate_ovlax,' time=',t_sec,' hitsize= ',hitsize
          end if
       end do ! loop_ther=1:n_ther
 
@@ -225,6 +225,7 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       allocate(history_swil_thin(n_meas),history_swil_smth(n_meas),history_sopt_thin(n_meas),history_sopt_smth(n_meas),history_accrate_metro(n_meas),history_accrate_ovlax(n_meas),history_t_sec(n_meas))
       allocate(interpol(16,Nz),hist(n_meas,16),corr(n_meas,16,16,Nz))
+      ! allocate(interpol(8,Nz),hist(n_meas,8),corr(n_meas,8,8,Nz))
 
       do loop_meas=1,n_meas
          accrate_metro=0.0; accrate_ovlax=0.0
@@ -247,11 +248,11 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          history_accrate_metro(loop_meas) = accrate_metro
          history_accrate_ovlax(loop_meas) = accrate_ovlax
 
-         interpol=calc_vectorvaluedglueballinterpolator(U,rho_2D) !!! note: yields size(interpol)=[16,Nz]
+         interpol=calc_vectorvaluedglueballinterpolator(U,rho_2D) !!! note: yields size(interpol)=[16,Nz] (or 16 after what I've done and commented out)
          corr(loop_meas,:,:,:)=calc_multivaluedslicetocorr(interpol); hist(loop_meas,:)=sum(interpol,dim=2)/float(Nz)
          
          if (modulo(loop_meas,10)==0) then
-            write(*,'(i8,a,i6,a,2f7.4,a,f8.6,a,2f9.6,a,2f9.6)') loop_meas,'/',n_meas,'accrates=',accrate_metro,accrate_ovlax,' time=',t_sec,' swil=',swil_thin,swil_smth,' sopt=',sopt_thin,sopt_smth
+            write(*,'(i8,a,i6,a,2f7.4,a,f8.6,a,2f9.6,a,2f9.6)') loop_meas,' /',n_meas,' accrates=',accrate_metro,accrate_ovlax,' time=',t_sec,' swil=',swil_thin,swil_smth,' sopt=',sopt_thin,sopt_smth
          end if
       end do ! loop_meas=1:n_meas
 
@@ -1107,6 +1108,75 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !    !!! note: var must be divided by n_meas-1 in the end
    ! end subroutine online_avgvar_dp
 
+   ! function calc_vectorvaluedglueballinterpolator(U,rho_2D)
+   !    implicit none
+   !    complex(kind=sp),dimension(2,3,Nx,Ny,Nz),intent(in) :: U
+   !    real(kind=sp),intent(in) :: rho_2D
+   !    complex(kind=sp),dimension(:,:,:,:,:),allocatable :: V,V_tmp
+   !    complex(kind=sp) :: tmp(2),tmq(2),tmr(2,2)
+   !    real(kind=sp),dimension(8,Nz) :: calc_vectorvaluedglueballinterpolator
+   !    real(kind=dp) :: swil_dp,sopt_dp
+   !    integer :: n,x,y,z,x_min,y_min,x_plu,y_plu
+   !    allocate(V(2,3,Nx,Ny,Nz),V_tmp(2,3,Nx,Ny,Nz))
+   !    do n=1,4
+   !       select case(n)
+   !        case(1); call su2_3D_confcopy(U,V_tmp)    ; call su2_2D_stout(V_tmp,V,rho_2D) !!! note: now V is  1-fold stouted
+   !        case(2); call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D) !!! note: now V is  3-fold stouted
+   !        case(3); call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D)
+   !                 call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D) !!! note: now V is  7-fold stouted
+   !        case(4); call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D)
+   !                 call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D)
+   !                 call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D)
+   !                 call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D) !!! note: now V is 15-fold stouted
+   !       end select
+   !       !$OMP PARALLEL DO DEFAULT(none) PRIVATE(x_min,x_plu,y_min,y_plu,swil_dp,sopt_dp,tmp,tmq,tmr) FIRSTPRIVATE(n) SHARED(V,calc_vectorvaluedglueballinterpolator) SCHEDULE(static)
+   !       do z=1,Nz
+   !          swil_dp=0.0_dp
+   !          sopt_dp=0.0_dp
+   !          do y=1,Ny; y_min=modulo(y-2,Ny)+1; y_plu=modulo(y,Ny)+1
+   !          do x=1,Nx; x_min=modulo(x-2,Nx)+1; x_plu=modulo(x,Nx)+1
+   !             tmp=su2_mult_oodd(V(:,1,x,y,z),V(:,2,x_plu,y,z),V(:,1,x,y_plu,z),V(:,2,x,y,z))
+   !             swil_dp=swil_dp+su2_realtrace([cmplx(1.0),cmplx(0.0)]-tmp)/2.0
+   !             tmq=su2_mult_oodd(V(:,1,x,y,z),V(:,2,x_plu,y,z),V(:,1,x,y_plu,z),V(:,2,x,y,z)) &
+   !                +su2_mult_oddo(V(:,2,x,y,z),V(:,1,x_min,y_plu,z),V(:,2,x_min,y,z),V(:,1,x_min,y,z)) &
+   !                +su2_mult_ddoo(V(:,1,x_min,y,z),V(:,2,x_min,y_min,z),V(:,1,x_min,y_min,z),V(:,2,x,y_min,z)) &
+   !                +su2_mult_dood(V(:,2,x,y_min,z),V(:,1,x,y_min,z),V(:,2,x_plu,y_min,z),V(:,1,x,y,z))
+   !             tmr=su2_full(tmq)/cmplx(0.0,4.0,kind=sp);
+   !             tmr=0.5*(tmr+conjg(transpose(tmr)));                 !!! note: make hermitean
+   !             tmr(1,1)=0.5*(tmr(1,1)-tmr(2,2)); tmr(2,2)=-tmr(1,1) !!! note: make traceless
+   !             sopt_dp=sopt_dp+0.5*realpart(sum(tmr(1,:)*tmr(:,1))+sum(tmr(2,:)*tmr(:,2)))/float(2)
+   !          end do ! x=1:Nx
+   !          end do ! y=1:Ny
+   !          calc_vectorvaluedglueballinterpolator(n+0,z)=real(swil_dp,kind=sp)/float(Nx*Ny)
+   !          calc_vectorvaluedglueballinterpolator(n+4,z)=real(sopt_dp,kind=sp)/float(Nx*Ny)
+   !       end do ! z=1:Nz
+   !       !$OMP END PARALLEL DO
+   !    end do ! n=1:4
+   !    deallocate(V,V_tmp)
+   ! end function calc_vectorvaluedglueballinterpolator
+
+   ! function calc_multivaluedslicetocorr(slice)
+   !    implicit none
+   !    real(kind=sp),dimension(8,Nz),intent(in) :: slice
+   !    real(kind=sp),dimension(8,8,Nz) :: calc_multivaluedslicetocorr
+   !    real(kind=dp),dimension(8,8,Nz) :: acc_dp
+   !    integer :: s,t,delta,i,j
+   !    acc_dp(:,:,:)=0.0_dp
+   !    do t=1,Nz
+   !    do s=1,Nz
+   !       delta=modulo(t-s-1,Nz)+1 !!! note: delta is in range [1:Nz] where Nz stands for 0
+   !       do j=1,8
+   !       do i=1,8
+   !          acc_dp(i,j,delta)=acc_dp(i,j,delta)+real(slice(i,s)*slice(j,t),kind=dp)
+   !       end do ! j=1:8
+   !       end do ! i=1:8
+   !    end do ! s=1:Nz
+   !    end do ! t=1:Nz
+   !    do delta=1,Nz
+   !       calc_multivaluedslicetocorr(:,:,delta)=real(acc_dp(:,:,delta)+transpose(acc_dp(:,:,delta)),kind=sp)/float(2*Nz) !!! note: for each delta it got Nz contributions
+   !    end do ! delta=1:Nz
+   ! end function calc_multivaluedslicetocorr
+
    function calc_vectorvaluedglueballinterpolator(U,rho_2D)
       implicit none
       complex(kind=sp),dimension(2,3,Nx,Ny,Nz),intent(in) :: U
@@ -1128,6 +1198,7 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                    call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D)
                    call su2_2D_stout(V,V_tmp,rho_2D); call su2_2D_stout(V_tmp,V,rho_2D) !!! note: now V is 15-fold stouted
          end select
+         !!! Produce W from V containing... 
          !$OMP PARALLEL DO DEFAULT(none) PRIVATE(x_m,x_p,x_mm,x_pp,y_m,y_p,y_mm,y_pp,swil_dp,sopt_dp,swil_2_dp,sopt_2_dp,tmp,tmq,tmr,tms,tmt,tmu) FIRSTPRIVATE(n) SHARED(V,calc_vectorvaluedglueballinterpolator) SCHEDULE(static)
          do z=1,Nz
             swil_dp  =0.0_dp
@@ -1148,13 +1219,13 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                sopt_dp=sopt_dp+0.5*realpart(sum(tmr(1,:)*tmr(:,1))+sum(tmr(2,:)*tmr(:,2)))/float(2)
 
                tms=su2_mult_oooodddd(V(:,1,x,y,z),V(:,1,x_p,y,z),V(:,2,x_pp,y,z),V(:,2,x_pp,y_p,z),V(:,1,x_p,y_pp,z),V(:,1,x,y_pp,z),V(:,2,x,y_p,z),V(:,2,x,y,z))
-               swil_2_dp=swil_2_dp+su2_realtrace([cmplx(1.0),cmplx(0.0)]-tms/16)/2.0
+               swil_2_dp=swil_2_dp+su2_realtrace([cmplx(1.0),cmplx(0.0)]-tms)!/32.0
                tmt=su2_mult_oooodddd(V(:,1,x,y,z),V(:,1,x_p,y,z),V(:,2,x_pp,y,z),V(:,2,x_pp,y_p,z),V(:,1,x_p,y_pp,z),V(:,1,x,y_pp,z),V(:,2,x,y_p,z),V(:,2,x,y,z)) &
                   +su2_mult_ooddddoo(V(:,2,x,y,z),V(:,2,x,y_p,z),V(:,1,x_m,y_pp,z),V(:,1,x_mm,y_pp,z),V(:,2,x_mm,y_p,z),V(:,2,x_mm,y,z),V(:,1,x_mm,y,z),V(:,1,x_m,y,z)) &
                   +su2_mult_ddddoooo(V(:,1,x_m,y,z),V(:,1,x_mm,y,z),V(:,2,x_mm,y_m,z),V(:,2,x_mm,y_mm,z),V(:,1,x_mm,y_mm,z),V(:,1,x_m,y_mm,z),V(:,2,x,y_mm,z),V(:,2,x,y_m,z)) &
                   +su2_mult_ddoooodd(V(:,2,x,y_m,z),V(:,2,x,y_mm,z),V(:,1,x,y_mm,z),V(:,1,x_p,y_mm,z),V(:,2,x_pp,y_mm,z),V(:,2,x_pp,y_m,z),V(:,1,x_p,y,z),V(:,1,x,y,z))
-               tmu=su2_full(tmt)/cmplx(0.0,16.0,kind=sp);
-               tmu=0.5*(tmu+conjg(transpose(tmu)));                 !!! note: make hermitean
+               tmu=su2_full(tmt)/cmplx(0.0,4.0,kind=sp);
+               tmu=0.5*(tmu+conjg(transpose(tmu))) !/4.0            !!! note: make hermitean
                tmu(1,1)=0.5*(tmu(1,1)-tmu(2,2)); tmu(2,2)=-tmu(1,1) !!! note: make traceless
                sopt_2_dp=sopt_2_dp+0.5*realpart(sum(tmu(1,:)*tmu(:,1))+sum(tmu(2,:)*tmu(:,2)))/float(2)
             end do ! x=1:Nx
@@ -1178,12 +1249,12 @@ contains  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       acc_dp(:,:,:)=0.0_dp
       do t=1,Nz
       do s=1,Nz
-         delta=modulo(t-s-1,Nz)+1 !!! note: delta is in range [1:Nz] where Nz stands for 0
+         delta=modulo(t-s-1,Nz)+1 !!! note: delta is in range [1:Nz] where Nz stands for 0, as usual like mod1(t-s,Nz) in Julia
          do j=1,16
          do i=1,16
             acc_dp(i,j,delta)=acc_dp(i,j,delta)+real(slice(i,s)*slice(j,t),kind=dp)
-         end do ! j=1:16
          end do ! i=1:16
+         end do ! j=1:16
       end do ! s=1:Nz
       end do ! t=1:Nz
       do delta=1,Nz
